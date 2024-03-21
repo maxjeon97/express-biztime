@@ -53,9 +53,9 @@ router.get("/:code", async function (req, res, next) {
 
 router.post("", async function (req, res, next) {
   if (!req.body ||
-      !("code" in req.body) ||
-      !("name" in req.body) ||
-      !("description" in req.body)) {
+    !("code" in req.body) ||
+    !("name" in req.body) ||
+    !("description" in req.body)) {
     throw new BadRequestError("Must have code, name, description in request");
   }
 
