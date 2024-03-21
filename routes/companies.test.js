@@ -29,6 +29,10 @@ beforeEach(async function () {
   testInvoice = iResults.rows[0];
 });
 
+afterAll(async function () {
+  await db.end();
+});
+
 describe("GET /companies", function () {
   test("Gets a list of companies", async function () {
     const response = await request(app).get(`/companies`);
@@ -52,7 +56,7 @@ describe("GET /companies/:code", function () {
   });
 
   test("Responds with 404 if can't find company", async function () {
-    const response = await request(app).get("/companies/0");
+    const response = await request(app).get("/companies/test");
 
     expect(response.statusCode).toEqual(404);
   });
@@ -131,14 +135,8 @@ describe("DELETE /companies/:code", function () {
 
   test("Responds with 404 if can't find company", async function () {
     const response = await request(app)
-      .delete(`/companies/0`);
+      .delete(`/companies/test`);
 
     expect(response.statusCode).toEqual(404);
   });
-});
-
-
-
-afterAll(async function () {
-  await db.end();
 });

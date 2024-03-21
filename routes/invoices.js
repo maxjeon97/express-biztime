@@ -128,7 +128,7 @@ router.put("/:id", async function (req, res, next) {
 
   const invoice = results.rows[0];
 
-  return res.json({ invoice: invoice });
+  return res.json({ invoice });
 });
 
 
