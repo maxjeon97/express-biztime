@@ -71,6 +71,7 @@ router.post("", async function (req, res, next) {
   return res.status(201).json({ company: company });
 });
 
+
 /** PUT request -
  * Given JSON body data {name, description}
  * Update the company, returning JSON {company: {code, name, description}}
