@@ -15,7 +15,8 @@ const router = new express.Router();
 router.get("", async function (req, res, next) {
   const result = await db.query(
     `SELECT id, comp_code
-        FROM invoices`
+        FROM invoices
+        ORDER BY id`
   );
 
   return res.json({ invoices: result.rows });
@@ -35,27 +36,34 @@ router.get("/:id", async function (req, res, next) {
   const id = Number(req.params.id);
 
   const iResults = await db.query(
-    `SELECT id, amt, paid, add_date, paid_date
+    `SELECT id, amt, paid, add_date, paid_date, code, name, description
         FROM invoices
+        JOIN companies ON companies.code = invoices.comp_code
         WHERE id = $1`, [id]
   );
 
-  const invoice = iResults.rows[0];
+  const data = iResults.rows[0];
 
-  if (!invoice) {
+  if (!data) {
     throw new NotFoundError("This invoice does not exist");
   }
 
-  const cResults = await db.query(
-    `SELECT code, name, description
-        FROM companies
-        JOIN invoices ON companies.code = invoices.comp_code
-        WHERE invoices.id = $1`, [id]
-  );
+  const invoice = {
+    invoice: {
+      id: data.id,
+      amt: data.amt,
+      paid: data.paid,
+      add_date: data.add_date,
+      paid_date: data.paid_date,
+      company: {
+        code: data.code,
+        name: data.name,
+        description: data.description
+      }
+    }
+  };
 
-  invoice.company = cResults.rows[0];
-
-  return res.json({ invoice: invoice });
+  return res.json(invoice);
 });
 
 
@@ -83,5 +91,47 @@ router.post("", async function (req, res, next) {
   const invoice = result.rows[0];
   return res.status(201).json({ invoice: invoice });
 });
+
+/** PUT request -
+ * Given JSON body data {amt}
+ * Update the invoice, returning JSON
+ * {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
+*/
+
+router.put("/:id", async function (req, res, next) {
+  if (req.body === undefined ||
+    "id" in req.body ||
+    !("amt" in req.body)) {
+    throw new BadRequestError("Not allowed");
+  }
+
+  const id = req.params.id;
+  const { amt } = req.body;
+  const results = await db.query(
+    `UPDATE invoices
+         SET amt=$1
+         WHERE id = $2
+         RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+    [amt, id]);
+  const invoice = results.rows[0];
+
+  if (!invoice) throw new NotFoundError("This invoice does not exist");
+  return res.json({ invoice: invoice });
+});
+
+/** Delete request -
+ * Delete the invoice, returning JSON { status: "deleted" }
+*/
+
+router.delete("/:id", async function (req, res, next) {
+  const id = req.params.id;
+  const results = await db.query(
+    "DELETE FROM invoices WHERE id = $1 RETURNING id", [id]);
+  const invoice = results.rows[0];
+
+  if (!invoice) throw new NotFoundError("This invoice does not exist");
+  return res.json({ status: "deleted" });
+});
+
 
 module.exports = router;
