@@ -93,7 +93,7 @@ router.post("", async function (req, res, next) {
 });
 
 /** PUT request -
- * Given JSON body data {amt}
+ * Given JSON body data {amt, paid}
  * Update the invoice, returning JSON
  * {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
 */
@@ -101,23 +101,52 @@ router.post("", async function (req, res, next) {
 router.put("/:id", async function (req, res, next) {
   if (req.body === undefined ||
     "id" in req.body ||
-    !("amt" in req.body)) {
+    !("amt" in req.body) ||
+    !("paid" in req.body)) {
     throw new BadRequestError("Not allowed");
   }
 
   const id = req.params.id;
-  const { amt } = req.body;
+  const { amt, paid } = req.body;
+
+  const currentInvoice = await db.query(
+    `SELECT paid, paid_date
+        FROM invoices
+        WHERE id = $1`, [id]
+  );
+
+  if (!currentInvoice) throw new NotFoundError("This invoice does not exist");
+
+  const paidDate = generatePaidDate(currentInvoice, paid);
+
   const results = await db.query(
     `UPDATE invoices
-         SET amt=$1
-         WHERE id = $2
-         RETURNING id, comp_code, amt, paid, add_date, paid_date`,
-    [amt, id]);
+        SET amt=$1, paid=$2, paid_date=$3
+        WHERE id = $4
+        RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+    [amt, paid, paidDate, id]);
+
   const invoice = results.rows[0];
 
-  if (!invoice) throw new NotFoundError("This invoice does not exist");
   return res.json({ invoice: invoice });
 });
+
+
+/**Generates paidDate based on current invoice paid date and updated paid
+ * status
+*/
+function generatePaidDate(invoice, paid) {
+  if(!(invoice.paid_date) && paid) {
+    return new Date();
+  }
+  else if(invoice.paid && !paid) {
+    return null;
+  }
+  else {
+    return invoice.paid_date;
+  }
+}
+
 
 /** Delete request -
  * Delete the invoice, returning JSON { status: "deleted" }
